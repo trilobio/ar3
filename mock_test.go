@@ -15,7 +15,23 @@ func TestMockArmInterface(t *testing.T) {
 	}
 }
 
+func TestConnectMock(t *testing.T) {
+	arm := ConnectMock()
+	if arm.Echo() != nil {
+		t.Errorf("Mock echo should always connect")
+	}
+}
+
 func TestAR3simulate_MoveSteppers(t *testing.T) {
+	arm := ConnectMock()
+	// Move the arm. First 5 numbers are rational defaults, and each motor gets moved 500 steps
+	err := arm.MoveSteppers(25, 15, 10, 20, 5, 500, 500, 500, 500, 500, 500, 0)
+	if err != nil {
+		t.Errorf("Arm should succeed with initial move. Got error: %s", err)
+	}
+}
+
+func TestAR3simulate_MoveSteppersTooLarge(t *testing.T) {
 	// The following line establishes that mock DOES implement the AR3 interface.
 	var arm Arm //nolint
 	arm = ConnectMock()
@@ -23,33 +39,6 @@ func TestAR3simulate_MoveSteppers(t *testing.T) {
 	if err == nil {
 		t.Errorf("Arm should have failed with large j6 value")
 	}
-}
-
-func ExampleConnectMock() {
-	arm := ConnectMock()
-	if arm.Echo() == nil {
-		fmt.Println("Connected")
-	}
-	// Output: Connected
-}
-
-func ExampleAR3simulate_Echo() {
-	arm := ConnectMock()
-	err := arm.Echo()
-	if err == nil {
-		fmt.Print("Connected")
-	}
-	// Output: Connected
-}
-
-func ExampleAR3simulate_MoveSteppers() {
-	arm := ConnectMock()
-	// Move the arm. First 5 numbers are rational defaults, and each motor gets moved 500 steps
-	err := arm.MoveSteppers(25, 15, 10, 20, 5, 500, 500, 500, 500, 500, 500, 0)
-	if err == nil {
-		fmt.Println("Moved")
-	}
-	// Output: Moved
 }
 
 func ExampleAR3simulate_Calibrate() {
