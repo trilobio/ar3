@@ -3,7 +3,7 @@ module github.com/koeng101/ar3
 go 1.17
 
 require (
-	github.com/koeng101/kinematics v1.0.1
+	github.com/koeng101/kinematics v1.0.2
 	golang.org/x/sys v0.0.0-20210917161153-d61c044b1678
 )
 
