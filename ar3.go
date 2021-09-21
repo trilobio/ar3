@@ -11,13 +11,7 @@ not useful for devices for like raspberry pis.
 
 This Golang library takes over for the local robotic control software by
 implementing the functions needed to communicate with the arduino on the AR3 or
-AR2 robot. Specifically, we implement the functions for:
-
- - CurrentPosition
- - Echo
- - Calibrate
- - MoveSteppers
- - SetDirections
+AR2 robot.
 
 We do not yet support encoders in the AR3, nor any other commands. All other
 rountines can be reproduced in code and not directly on the robot.
