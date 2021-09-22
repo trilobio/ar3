@@ -40,7 +40,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/koeng101/kinematics"
+	"github.com/trilobio/kinematics"
 	"golang.org/x/sys/unix"
 )
 
@@ -51,10 +51,10 @@ const degreesToRadians float64 = math.Pi / 180
 // executable files from https://www.anninrobotics.com/downloads
 // Those parameters are the same between the AR2 and AR3.
 var AR3DhParameters kinematics.DhParameters = kinematics.DhParameters{
-	ThetaOffsets: [...]float64{0, -math.Pi / 2, 0, 0, 0, math.Pi},
-	AlphaValues:  [...]float64{-(math.Pi / 2), 0, math.Pi / 2, -(math.Pi / 2), math.Pi / 2, 0},
-	AValues:      [...]float64{64.2, 305, 0, 0, 0, 0},
-	DValues:      [...]float64{169.77, 0, 0, -222.63, 0, -36.25},
+	ThetaOffsets: []float64{0, -math.Pi / 2, 0, 0, 0, math.Pi},
+	AlphaValues:  []float64{-(math.Pi / 2), 0, math.Pi / 2, -(math.Pi / 2), math.Pi / 2, 0},
+	AValues:      []float64{64.2, 305, 0, 0, 0, 0},
+	DValues:      []float64{169.77, 0, 0, -222.63, 0, -36.25},
 }
 
 // Arm is the generic interface for interacting with an AR3 robotic arm.
@@ -358,13 +358,13 @@ func (ar3 *AR3exec) MoveJointRadians(speed, accdur, accspd, dccdur, dccspd int, 
 // joint angles.
 func (ar3 *AR3exec) Move(speed, accdur, accspd, dccdur, dccspd int, pose kinematics.Pose) error {
 	ja := ar3.CurrentJointRadians()
-	thetasInit := kinematics.JointAngles{J1: ja[0], J2: ja[1], J3: ja[2], J4: ja[3], J5: ja[4], J6: ja[5]}
+	thetasInit := []float64{ja[0], ja[1], ja[2], ja[3], ja[4], ja[5]}
 	tj, err := kinematics.InverseKinematics(pose, AR3DhParameters, thetasInit)
 	if err != nil {
 		return fmt.Errorf("Inverse Kinematics failed with error: %s", err)
 	}
 	return ar3.MoveJointRadians(speed, accdur, accspd, dccdur,
-		dccspd, tj.J1, tj.J2, tj.J3, tj.J4, tj.J5, tj.J6, 0)
+		dccspd, tj[0], tj[1], tj[2], tj[3], tj[4], tj[5], 0)
 }
 
 // Calibrate moves each of the AR3's stepper motors to their respective limit
@@ -443,7 +443,7 @@ func (ar3 *AR3exec) CurrentJointRadians() [7]float64 {
 // on the DH parameters and current joint angles.
 func (ar3 *AR3exec) CurrentPose() kinematics.Pose {
 	ja := ar3.CurrentJointRadians()
-	thetasInit := kinematics.JointAngles{J1: ja[0], J2: ja[1], J3: ja[2], J4: ja[3], J5: ja[4], J6: ja[5]}
+	thetasInit := []float64{ja[0], ja[1], ja[2], ja[3], ja[4], ja[5]}
 	return kinematics.ForwardKinematics(thetasInit, AR3DhParameters)
 }
 

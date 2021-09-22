@@ -22,6 +22,39 @@ func TestConnectMock(t *testing.T) {
 	}
 }
 
+func TestAR3simulate_SetDirections(t *testing.T) {
+	arm := ConnectMock()
+	arm.SetDirections([7]bool{true, false, true, false, true, false, true})
+	if arm.GetDirections() != [7]bool{true, false, true, false, true, false, true} {
+		t.Errorf("GetDirections should be equivalent to SetDirections")
+	}
+}
+
+func TestAR3simulate_CurrentStepperPosition(t *testing.T) {
+	arm := ConnectMock()
+	currentStepperPositions := arm.CurrentStepperPosition()
+	if currentStepperPositions != [7]int{0, 0, 0, 0, 0, 0, 0} {
+		t.Errorf("Steppers should be equivalent to [7]int{0, 0, 0, 0, 0, 0, 0}. Got %v", currentStepperPositions)
+	}
+}
+
+func TestAR3simulate_CurrentJointRadians(t *testing.T) {
+	arm := ConnectMock()
+	currentJoints := arm.CurrentJointRadians()
+	if currentJoints != [7]float64{0, 0, 0, 0, 0, 0, 0} {
+		t.Errorf("Joints should be equivalent to [7]float64{0, 0, 0, 0, 0, 0, 0}. Got %v", currentJoints)
+	}
+}
+
+func TestAR3simulate_CurrentPose(t *testing.T) {
+	arm := ConnectMock()
+	currentPose := arm.CurrentPose()
+	// x86 and ARM systems calculate kinematics slightly differently.
+	if fmt.Sprintf("%5f", currentPose.Position.X) != "323.080000" {
+		t.Errorf("X pose should be equivalent to 323.080000. Got %5f", currentPose.Position.X)
+	}
+}
+
 func TestAR3simulate_MoveSteppers(t *testing.T) {
 	arm := ConnectMock()
 	// Move the arm. First 5 numbers are rational defaults, and each motor gets moved 500 steps
@@ -41,22 +74,37 @@ func TestAR3simulate_MoveSteppersTooLarge(t *testing.T) {
 	}
 }
 
-func ExampleAR3simulate_Calibrate() {
+func TestAR3simulate_MoveJointRadians(t *testing.T) {
 	arm := ConnectMock()
-	// Calibrate the arm. 50 is a good default speed.
-	err := arm.Calibrate(50, true, true, true, true, true, true, true)
-	if err == nil {
-		fmt.Println("Calibrated")
+	// Move the arm 1 radian in each direction.
+	err := arm.MoveJointRadians(5, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0)
+	if err != nil {
+		t.Errorf("Arm should succeed with radian move. Got error: %s", err)
 	}
-	// Output: Calibrated
 }
 
-func ExampleAR3simulate_CurrentStepperPosition() {
+func TestAR3simulate_Move(t *testing.T) {
 	arm := ConnectMock()
-	// Current position. By default, the arm is assumed to be homed at 0
-	jointVals := arm.CurrentStepperPosition()
-	if jointVals[0] == 0 {
-		fmt.Println("At 0")
+	// Establish position to move to
+	err := arm.MoveJointRadians(5, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0)
+	currPose := arm.CurrentPose()
+	err = arm.Move(5, 10, 10, 10, 10, currPose)
+	if err != nil {
+		t.Errorf("Arm should succeed with move. Got error: %s", err)
 	}
-	// Output: At 0
+
+	// Try to move somewhere ridiculous
+	currPose.Position.X = 10000000000
+	err = arm.Move(5, 10, 10, 10, 10, currPose)
+	if err == nil {
+		t.Errorf("Arm should fail at moving somewhere ridiculous. Got error: %s", err)
+	}
+}
+
+func TestAR3simulate_Calibrate(t *testing.T) {
+	arm := ConnectMock()
+	err := arm.Calibrate(25, true, true, true, true, true, true, true)
+	if err != nil {
+		t.Errorf("Simulate arm should always succeed. Got error: %s", err)
+	}
 }

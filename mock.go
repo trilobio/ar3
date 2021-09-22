@@ -2,7 +2,7 @@ package ar3
 
 import (
 	"fmt"
-	"github.com/koeng101/kinematics"
+	"github.com/trilobio/kinematics"
 )
 
 // AR3simulate struct represents an AR3 robotic arm interface for testing purposes.
@@ -60,7 +60,7 @@ func (ar3 *AR3simulate) CurrentJointRadians() [7]float64 {
 // CurrentPose simulates AR3exec.CurrentPose()
 func (ar3 *AR3simulate) CurrentPose() kinematics.Pose {
 	ja := ar3.CurrentJointRadians()
-	thetasInit := kinematics.JointAngles{J1: ja[0], J2: ja[1], J3: ja[2], J4: ja[3], J5: ja[4], J6: ja[5]}
+	thetasInit := []float64{ja[0], ja[1], ja[2], ja[3], ja[4], ja[5]}
 	return kinematics.ForwardKinematics(thetasInit, AR3DhParameters)
 }
 
@@ -100,11 +100,11 @@ func (ar3 *AR3simulate) MoveJointRadians(speed, accdur, accspd, dccdur, dccspd i
 // joint angles.
 func (ar3 *AR3simulate) Move(speed, accdur, accspd, dccdur, dccspd int, pose kinematics.Pose) error {
 	ja := ar3.CurrentJointRadians()
-	thetasInit := kinematics.JointAngles{J1: ja[0], J2: ja[1], J3: ja[2], J4: ja[3], J5: ja[4], J6: ja[5]}
+	thetasInit := []float64{ja[0], ja[1], ja[2], ja[3], ja[4], ja[5]}
 	tj, err := kinematics.InverseKinematics(pose, AR3DhParameters, thetasInit)
 	if err != nil {
 		return fmt.Errorf("Inverse Kinematics failed with error: %s", err)
 	}
 	return ar3.MoveJointRadians(speed, accdur, accspd, dccdur,
-		dccspd, tj.J1, tj.J2, tj.J3, tj.J4, tj.J5, tj.J6, 0)
+		dccspd, tj[0], tj[1], tj[2], tj[3], tj[4], tj[5], 0)
 }
