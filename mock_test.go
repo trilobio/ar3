@@ -118,3 +118,11 @@ func TestAR3simulate_Calibrate(t *testing.T) {
 		t.Errorf("Simulate arm should always succeed. Got error: %s", err)
 	}
 }
+
+func TestAR3simulate_Wait(t *testing.T) {
+	arm := ConnectMock()
+	err := arm.Wait(100)
+	if err != nil {
+		t.Errorf("Wait should always succeed")
+	}
+}

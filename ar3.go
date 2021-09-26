@@ -35,13 +35,12 @@ package ar3
 
 import (
 	"fmt"
+	"github.com/trilobio/kinematics"
+	"golang.org/x/sys/unix"
 	"math"
 	"os"
 	"time"
 	"unsafe"
-
-	"github.com/trilobio/kinematics"
-	"golang.org/x/sys/unix"
 )
 
 // Converts degrees to radians
@@ -71,6 +70,8 @@ type Arm interface {
 	MoveSteppers(speed, accdur, accspd, dccdur, dccspd, j1, j2, j3, j4, j5, j6, tr int) error
 	MoveJointRadians(speed, accdur, accspd, dccdur, dccspd int, j1, j2, j3, j4, j5, j6, tr float64) error
 	Move(speed, accdur, accspd, dccdur, dccspd int, pose kinematics.Pose) error
+
+	Wait(int) error
 }
 
 // The following StepLims are hard-coded in the ARbot.cal file for the stepper
@@ -141,7 +142,7 @@ func (ar3 *AR3exec) clearBuffer() error {
 // the value should be the directional number of steps to move the joint from
 // the limit switch to the 0 position. If you do not know this number, set
 // limitSwitchSteps all to 0 and immediately calibrate.
-func Connect(serialConnectionStr string, jointDirs [7]bool, limitSwitchSteps [7]int) (*AR3exec, error) {
+func Connect(serialConnectionStr string, jointDirs [7]bool, limitSwitchSteps [7]int) (Arm, error) {
 	// Set up connection to the serial port
 	f, err := os.OpenFile(serialConnectionStr, unix.O_RDWR|unix.O_NOCTTY|unix.O_NONBLOCK, 0666)
 	if err != nil {
@@ -494,4 +495,10 @@ func (ar3 *AR3exec) SetDirections(jointDirs [7]bool) {
 // GetDirections gets the directions of the AR3 arm.
 func (ar3 *AR3exec) GetDirections() [7]bool {
 	return ar3.jointDirs
+}
+
+// Wait waits for a given number of milliseconds.
+func (ar3 *AR3exec) Wait(waitTimeMillisecond int) error {
+	time.Sleep(time.Duration(waitTimeMillisecond) * time.Millisecond)
+	return nil
 }
