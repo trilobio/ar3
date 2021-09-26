@@ -86,7 +86,7 @@ func TestAR3simulate_MoveJointRadians(t *testing.T) {
 func TestAR3simulate_Move(t *testing.T) {
 	arm := ConnectMock()
 	// Establish position to move to
-	err := arm.MoveJointRadians(5, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0)
+	err := arm.MoveJointRadians(5, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 0)
 	if err != nil {
 		t.Errorf("Arm should not have failed to MoveJointRadians. Got error: %s", err)
 	}
@@ -94,6 +94,13 @@ func TestAR3simulate_Move(t *testing.T) {
 	err = arm.Move(5, 10, 10, 10, 10, currPose)
 	if err != nil {
 		t.Errorf("Arm should succeed with move. Got error: %s", err)
+	}
+
+	// Move somewhere close by
+	currPose.Position.Z = currPose.Position.Z + 10
+	err = arm.Move(5, 10, 10, 10, 10, currPose)
+	if err != nil {
+		t.Errorf("Arm should succeed with small move. Got error: %s", err)
 	}
 
 	// Try to move somewhere ridiculous
