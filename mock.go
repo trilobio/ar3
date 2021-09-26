@@ -65,7 +65,7 @@ func (ar3 *AR3simulate) CurrentPose() kinematics.Pose {
 }
 
 // MoveSteppers simulates AR3exec.MoveSteppers().
-func (ar3 *AR3simulate) MoveSteppers(speed, accdur, accspd, dccdur, dccspd, j1, j2, j3, j4, j5, j6, tr int) error {
+func (ar3 *AR3simulate) moveSteppersRelative(speed, accdur, accspd, dccdur, dccspd, j1, j2, j3, j4, j5, j6, tr int) error {
 	// First, check if the move can be made
 	to := []int{j1, j2, j3, j4, j5, j6}
 	from := []int{ar3.jointVals[0], ar3.jointVals[1], ar3.jointVals[2], ar3.jointVals[3], ar3.jointVals[4], ar3.jointVals[5]}
@@ -84,6 +84,15 @@ func (ar3 *AR3simulate) MoveSteppers(speed, accdur, accspd, dccdur, dccspd, j1, 
 
 	// Since we are simulating, simply update and assume that there is no error.
 	return nil
+}
+
+// MoveSteppers simulates AR3exec.MoveSteppers
+func (ar3 *AR3simulate) MoveSteppers(speed, accdur, accspd, dccdur, dccspd, j1, j2, j3, j4, j5, j6, tr int) error {
+	js := ar3.jointVals
+	sl := ar3.limitSwitchSteps
+	return ar3.moveSteppersRelative(speed, accdur, accspd, dccdur, dccspd,
+		j1-js[0]+sl[0], j2-js[1]+sl[1], j3-js[2]+sl[2], j4-js[3]+sl[3],
+		j5-js[4]+sl[4], j6-js[5]+sl[5], tr-js[6]+sl[6])
 }
 
 // MoveJointRadians simulates AR3exec.MoveJointRadians
