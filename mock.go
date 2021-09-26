@@ -13,7 +13,7 @@ type AR3simulate struct {
 }
 
 // ConnectMock connects to a mock AR3simulate interface.
-func ConnectMock() *AR3simulate {
+func ConnectMock() Arm {
 	return &AR3simulate{}
 }
 
@@ -116,4 +116,9 @@ func (ar3 *AR3simulate) Move(speed, accdur, accspd, dccdur, dccspd int, pose kin
 	}
 	return ar3.MoveJointRadians(speed, accdur, accspd, dccdur,
 		dccspd, tj[0], tj[1], tj[2], tj[3], tj[4], tj[5], 0)
+}
+
+// Wait simulates AR3.Wait().
+func (ar3 *AR3simulate) Wait(waitTimeMilliseconds int) error {
+	return nil
 }

@@ -6,4 +6,4 @@
 
 This repo contains software for controlling the AR2 and AR3 robotic arms using Golang. Currently, only linux is supported.
 
-Package documentation can be found at [pkg.go.dev](https://pkg.go.dev/github.com/trilobio/ar3) or [godoc.io](https://godocs.io/github.com/trilobio/ar3)
+Package documentation can be found at [godoc.io](https://godocs.io/github.com/trilobio/ar3)
