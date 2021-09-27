@@ -2,6 +2,7 @@ package ar3
 
 import (
 	"fmt"
+
 	"github.com/trilobio/kinematics"
 )
 
@@ -14,7 +15,7 @@ type AR3simulate struct {
 
 // ConnectMock connects to a mock AR3simulate interface.
 func ConnectMock() Arm {
-	return &AR3simulate{}
+	return &AR3simulate{limitSwitchSteps: limitSwitchSteps}
 }
 
 // Calibrate simulates AR3exec.Calibrate()
@@ -74,8 +75,14 @@ func (ar3 *AR3simulate) moveSteppersRelative(speed, accdur, accspd, dccdur, dccs
 	var newPositions [7]int
 	for i := 0; i < 6; i++ {
 		newJ := to[i] + from[i]
-		if newJ < 0 || newJ > limits[i] {
-			return fmt.Errorf("%s out of range. Must be between 0 and %d. Got %d", motor[i], limits[i], newJ)
+		lowerLimit := 0
+		upperLimit := limits[i]
+		if !calibDirs[i] {
+			lowerLimit = -upperLimit
+			upperLimit = 0
+		}
+		if newJ < lowerLimit || newJ > upperLimit {
+			return fmt.Errorf("%s out of range. Must be between %d and %d. Got %d", motor[i], lowerLimit, upperLimit, newJ)
 		}
 		newPositions[i] = newJ
 	}

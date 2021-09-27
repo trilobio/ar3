@@ -132,6 +132,8 @@ func (ar3 *AR3exec) clearBuffer() error {
 	return errno
 }
 
+var limitSwitchSteps [7]int = anglesToSteps([7]float64{-170, 85, -60, -85, 90, 80, 0}, true)
+
 // Connect connects to the AR3 over serial.
 //
 // jointDirs is a boolean array describing which direction (positive or
@@ -142,7 +144,7 @@ func (ar3 *AR3exec) clearBuffer() error {
 // the value should be the directional number of steps to move the joint from
 // the limit switch to the 0 position. If you do not know this number, set
 // limitSwitchSteps all to 0 and immediately calibrate.
-func Connect(serialConnectionStr string, jointDirs [7]bool, limitSwitchSteps [7]int) (Arm, error) {
+func Connect(serialConnectionStr string, jointDirs [7]bool) (Arm, error) {
 	// Set up connection to the serial port
 	f, err := os.OpenFile(serialConnectionStr, unix.O_RDWR|unix.O_NOCTTY|unix.O_NONBLOCK, 0666)
 	if err != nil {
