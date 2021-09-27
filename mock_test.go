@@ -2,6 +2,7 @@ package ar3
 
 import (
 	"fmt"
+	"math"
 	"testing"
 )
 
@@ -124,5 +125,14 @@ func TestAR3simulate_Wait(t *testing.T) {
 	err := arm.Wait(100)
 	if err != nil {
 		t.Errorf("Wait should always succeed")
+	}
+}
+
+func TestBasicHome(t *testing.T) {
+	// This tests a basic rational default for homing
+	arm := ConnectMock()
+	err := arm.MoveJointRadians(25, 10, 10, 10, 10, 0, 0, math.Pi/4, 0, -math.Pi/4, 0, 0)
+	if err != nil {
+		t.Errorf("Failed to go to basic position with error: %s", err)
 	}
 }

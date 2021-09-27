@@ -14,7 +14,7 @@ type AR3simulate struct {
 
 // ConnectMock connects to a mock AR3simulate interface.
 func ConnectMock() Arm {
-	return &AR3simulate{}
+	return &AR3simulate{limitSwitchSteps: limitSwitchSteps}
 }
 
 // Calibrate simulates AR3exec.Calibrate()
