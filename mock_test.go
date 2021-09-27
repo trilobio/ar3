@@ -46,7 +46,6 @@ func TestAR3simulate_CurrentJointRadians(t *testing.T) {
 		t.Error(err)
 	}
 	currentJoints := arm.CurrentJointRadians()
-	fmt.Println(arm.CurrentStepperPosition())
 	if currentJoints != [7]float64{0, 0, 0, 0, 0, 0, 0} {
 		t.Errorf("Joints should be equivalent to [7]float64{0, 0, 0, 0, 0, 0, 0}. Got %v", currentJoints)
 	}
@@ -56,8 +55,8 @@ func TestAR3simulate_CurrentPose(t *testing.T) {
 	arm := ConnectMock()
 	currentPose := arm.CurrentPose()
 	// x86 and ARM systems calculate kinematics slightly differently.
-	if fmt.Sprintf("%5f", currentPose.Position.X) != "323.080000" {
-		t.Errorf("X pose should be equivalent to 323.080000. Got %5f", currentPose.Position.X)
+	if fmt.Sprintf("%5f", currentPose.Position.X) != "32.336839" {
+		t.Errorf("X pose should be equivalent to 32.336839. Got %5f", currentPose.Position.X)
 	}
 }
 
@@ -92,7 +91,7 @@ func TestAR3simulate_MoveJointRadians(t *testing.T) {
 func TestAR3simulate_Move(t *testing.T) {
 	arm := ConnectMock()
 	// Establish position to move to
-	err := arm.MoveJointRadians(5, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 0)
+	err := arm.MoveJointRadians(25, 10, 10, 10, 10, 0, 0, math.Pi/4, 0, -math.Pi/4, 0, 0)
 	if err != nil {
 		t.Errorf("Arm should not have failed to MoveJointRadians. Got error: %s", err)
 	}
