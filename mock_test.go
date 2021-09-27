@@ -41,7 +41,12 @@ func TestAR3simulate_CurrentStepperPosition(t *testing.T) {
 
 func TestAR3simulate_CurrentJointRadians(t *testing.T) {
 	arm := ConnectMock()
+	err := arm.MoveJointRadians(10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0)
+	if err != nil {
+		t.Error(err)
+	}
 	currentJoints := arm.CurrentJointRadians()
+	fmt.Println(arm.CurrentStepperPosition())
 	if currentJoints != [7]float64{0, 0, 0, 0, 0, 0, 0} {
 		t.Errorf("Joints should be equivalent to [7]float64{0, 0, 0, 0, 0, 0, 0}. Got %v", currentJoints)
 	}

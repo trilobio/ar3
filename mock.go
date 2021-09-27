@@ -2,6 +2,7 @@ package ar3
 
 import (
 	"fmt"
+
 	"github.com/trilobio/kinematics"
 )
 
@@ -74,8 +75,14 @@ func (ar3 *AR3simulate) moveSteppersRelative(speed, accdur, accspd, dccdur, dccs
 	var newPositions [7]int
 	for i := 0; i < 6; i++ {
 		newJ := to[i] + from[i]
-		if newJ < 0 || newJ > limits[i] {
-			return fmt.Errorf("%s out of range. Must be between 0 and %d. Got %d", motor[i], limits[i], newJ)
+		lowerLimit := 0
+		upperLimit := limits[i]
+		if !calibDirs[i] {
+			lowerLimit = -upperLimit
+			upperLimit = 0
+		}
+		if newJ < lowerLimit || newJ > upperLimit {
+			return fmt.Errorf("%s out of range. Must be between %d and %d. Got %d", motor[i], lowerLimit, upperLimit, newJ)
 		}
 		newPositions[i] = newJ
 	}
@@ -90,6 +97,8 @@ func (ar3 *AR3simulate) moveSteppersRelative(speed, accdur, accspd, dccdur, dccs
 func (ar3 *AR3simulate) MoveSteppers(speed, accdur, accspd, dccdur, dccspd, j1, j2, j3, j4, j5, j6, tr int) error {
 	js := ar3.jointVals
 	sl := ar3.limitSwitchSteps
+	fmt.Println(sl)
+	fmt.Println(js)
 	return ar3.moveSteppersRelative(speed, accdur, accspd, dccdur, dccspd,
 		j1-js[0]+sl[0], j2-js[1]+sl[1], j3-js[2]+sl[2], j4-js[3]+sl[3],
 		j5-js[4]+sl[4], j6-js[5]+sl[5], tr-js[6]+sl[6])
