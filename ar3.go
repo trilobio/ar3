@@ -35,12 +35,13 @@ package ar3
 
 import (
 	"fmt"
-	"github.com/trilobio/kinematics"
-	"golang.org/x/sys/unix"
 	"math"
 	"os"
 	"time"
 	"unsafe"
+
+	"github.com/trilobio/kinematics"
+	"golang.org/x/sys/unix"
 )
 
 // Converts degrees to radians
@@ -81,7 +82,7 @@ const j2stepLim int = 7300
 const j3stepLim int = 7850
 const j4stepLim int = 15200
 const j5stepLim int = 4575
-const j6stepLim int = 6625
+const j6stepLim int = 14936
 
 // The following RadSteps (radians per step) are calculated from the AR3 stepper
 // motors and gearing to be exact values for converting steps to joint angles
@@ -94,6 +95,7 @@ const j6RadStep float64 = 0.02343358396 * degreesToRadians
 const trMmStep float64 = 0.0 // This is for a linear rail (mm/step)
 
 var calibDirs = [7]bool{false, true, false, false, true, true, false}
+var limitSwitchSteps [7]int = anglesToSteps([7]float64{-170, 85, -60, -85, 90, 170, 0}, true)
 
 // AR3exec struct represents an AR3 robotic arm connected to a serial port.
 type AR3exec struct {
@@ -131,8 +133,6 @@ func (ar3 *AR3exec) clearBuffer() error {
 	}
 	return errno
 }
-
-var limitSwitchSteps [7]int = anglesToSteps([7]float64{-170, 85, -60, -85, 90, 80, 0}, true)
 
 // Connect connects to the AR3 over serial.
 //
