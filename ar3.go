@@ -78,7 +78,7 @@ type Arm interface {
 // The following StepLims are hard-coded in the ARbot.cal file for the stepper
 // motors. These should not change.
 const j1stepLim int = 15200
-const j2stepLim int = 7300
+const j2stepLim int = 14600
 const j3stepLim int = 7850
 const j4stepLim int = 15200
 const j5stepLim int = 4575
@@ -87,7 +87,7 @@ const j6stepLim int = 14936
 // The following RadSteps (radians per step) are calculated from the AR3 stepper
 // motors and gearing to be exact values for converting steps to joint angles
 const j1RadStep float64 = 0.0225 * degreesToRadians
-const j2RadStep float64 = 0.018 * degreesToRadians
+const j2RadStep float64 = 0.009 * degreesToRadians
 const j3RadStep float64 = 0.018 * degreesToRadians
 const j4RadStep float64 = 0.01092214664 * degreesToRadians
 const j5RadStep float64 = 0.04723477289 * degreesToRadians
@@ -95,7 +95,7 @@ const j6RadStep float64 = 0.02343358396 * degreesToRadians
 const trMmStep float64 = 0.0 // This is for a linear rail (mm/step)
 
 var calibDirs = [7]bool{false, true, false, false, true, true, false}
-var limitSwitchSteps [7]int = anglesToSteps([7]float64{-170, 85, -60, -85, 90, 170, 0}, true)
+var limitSwitchSteps [7]int = anglesToSteps([7]float64{-170, 42.5, -60, -85, 90, 170, 0}, true)
 
 // AR3exec struct represents an AR3 robotic arm connected to a serial port.
 type AR3exec struct {
