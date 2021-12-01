@@ -1,15 +1,19 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	_ "embed"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/trilobio/ar3"
+	"github.com/trilobio/kinematics"
+	. "github.com/trilobio/quaternion"
 	"github.com/urfave/cli/v2"
 )
 
@@ -46,6 +50,12 @@ func main() {
 				Value:   10,
 				Usage:   "Set the speed of the robot arm",
 			},
+			&cli.BoolFlag{
+				Name:    "mock",
+				Aliases: []string{"k"},
+				Value:   false,
+				Usage:   "Use the mock robot arm interface",
+			},
 		},
 		Commands: []*cli.Command{
 			{
@@ -77,10 +87,16 @@ func main() {
 				Aliases: []string{"s"},
 				Usage:   "Get the current state of the robot arm.",
 				Action: func(c *cli.Context) error {
-					err := getPose(s.db, s.robot)
+					pose, err := getPose(s.db, s.robot)
 					if err != nil {
 						return err
 					}
+
+					poseJSON, err := json.MarshalIndent(pose, "", "  ")
+					if err != nil {
+						return err
+					}
+					fmt.Printf("%s\n", string(poseJSON))
 					return nil
 				},
 			},
@@ -88,8 +104,93 @@ func main() {
 				Name:    "move",
 				Aliases: []string{"m"},
 				Usage: "Move the robot arm end effector to a position and" +
-					" orientation",
+					" orientation. By default, move relative to the current" +
+					" pose.",
+				Flags: []cli.Flag{
+					&cli.Float64Flag{
+						Name:  "x",
+						Usage: "Position in the X axis to move the end effector",
+						Value: 0,
+					},
+					&cli.Float64Flag{
+						Name:  "y",
+						Usage: "Position in the Y axis to move the end effector",
+						Value: 0,
+					},
+					&cli.Float64Flag{
+						Name:  "z",
+						Usage: "Position in the Z axis to move the end effector",
+						Value: 0,
+					},
+					&cli.Float64Flag{
+						Name: "qw",
+						Usage: "W component of the rotation quaternion to move" +
+							" the end effector",
+						Value: 1,
+					},
+					&cli.Float64Flag{
+						Name: "qx",
+						Usage: "X component of the rotation quaternion to move" +
+							" the end effector",
+						Value: 0,
+					},
+					&cli.Float64Flag{
+						Name: "qy",
+						Usage: "Y component of the rotation quaternion to move" +
+							" the end effector",
+						Value: 0,
+					},
+					&cli.Float64Flag{
+						Name: "qz",
+						Usage: "Z component of the rotation quaternion to move" +
+							" the end effector",
+						Value: 0,
+					},
+					&cli.BoolFlag{
+						Name:    "abs",
+						Aliases: []string{"a"},
+						Usage: "If True, then move in absolute coordinates" +
+							" instead of relative",
+						Value: false,
+					},
+				},
 				Action: func(c *cli.Context) error {
+					var targPose kinematics.Pose
+					abs := c.Bool("abs")
+					targPose.Position.X = c.Float64("x")
+					targPose.Position.Y = c.Float64("y")
+					targPose.Position.Z = c.Float64("z")
+					targPose.Rotation.W = c.Float64("qw")
+					targPose.Rotation.X = c.Float64("qx")
+					targPose.Rotation.Y = c.Float64("qy")
+					targPose.Rotation.Z = c.Float64("qz")
+
+					// Handle relative transformations
+					if !abs {
+						currPose, err := getPose(s.db, s.robot)
+						if err != nil {
+							return err
+						}
+						var currRot = kinQuatToQuat(currPose.Rotation)
+						var targRot = kinQuatToQuat(targPose.Rotation)
+
+						targPose.Position.X += currPose.Position.X
+						targPose.Position.Y += currPose.Position.Y
+						targPose.Position.Z += currPose.Position.Z
+						targPose.Rotation = quatToKinQuat(targRot.MulQuat(currRot))
+
+					}
+
+					err := (*s.robot).Move(s.speed, 10, 10, 10, 10, targPose)
+					if err != nil {
+						return fmt.Errorf("error moving to position %v", err)
+					}
+
+					err = recordPose(s.db, s.robot)
+					if err != nil {
+						return err
+					}
+
 					return nil
 				},
 			},
@@ -98,15 +199,23 @@ func main() {
 			port := c.String("port")
 			dbUrl := c.String("dburl")
 			speed := c.Int("speed")
+			mock := c.Bool("mock")
 
 			s.speed = speed
 
 			jointDirs := [7]bool{true, false, false, true, false, true, false}
 
-			r, err := ar3.Connect(port, jointDirs)
-			if err != nil {
-				return err
+			var r ar3.Arm
+			var err error
+			if !mock {
+				r, err = ar3.Connect(port, jointDirs)
+				if err != nil {
+					return err
+				}
+			} else {
+				r = ar3.ConnectMock()
 			}
+
 			s.robot = &r
 
 			if dbUrl == "" {
@@ -164,23 +273,51 @@ func recordPose(db *sqlx.DB, robot *ar3.Arm) error {
 	return nil
 }
 
-func getPose(db *sqlx.DB, robot *ar3.Arm) error {
+func getPose(db *sqlx.DB, robot *ar3.Arm) (kinematics.Pose, error) {
+	var resPose kinematics.Pose
 	var pose struct {
-		X  float64 `db:"X"`
-		Y  float64 `db:"Y"`
-		Z  float64 `db:"Z"`
-		QW float64 `db:"QW"`
-		QX float64 `db:"QX"`
-		QY float64 `db:"QY"`
-		QZ float64 `db:"QZ"`
+		Insertedat time.Time `db:"insertedat"`
+		X          float64   `db:"X"`
+		Y          float64   `db:"Y"`
+		Z          float64   `db:"Z"`
+		QW         float64   `db:"QW"`
+		QX         float64   `db:"QX"`
+		QY         float64   `db:"QY"`
+		QZ         float64   `db:"QZ"`
 	}
 
-	err := db.Get(&pose, "SELECT * FROM pose ORDER BY Timestamp")
+	err := db.Get(&pose, "SELECT * FROM pose ORDER BY insertedat")
 	if err != nil {
-		return fmt.Errorf("error getting most recent pose: %v", err)
+		return resPose, fmt.Errorf("error getting most recent pose: %v", err)
 	}
 
-	fmt.Println(pose)
+	// Unpack temporary struct
+	resPose.Position.X = pose.X
+	resPose.Position.Y = pose.Y
+	resPose.Position.Z = pose.Z
 
-	return nil
+	resPose.Rotation.W = pose.QW
+	resPose.Rotation.X = pose.QX
+	resPose.Rotation.Y = pose.QY
+	resPose.Rotation.Z = pose.QZ
+
+	return resPose, nil
+}
+
+func kinQuatToQuat(kq kinematics.Quaternion) Quat {
+	var q = Quat{}
+	q.W = kq.W
+	q.X = kq.X
+	q.Y = kq.Y
+	q.Z = kq.Z
+	return q
+}
+
+func quatToKinQuat(q Quat) kinematics.Quaternion {
+	var kq = kinematics.Quaternion{}
+	kq.W = q.W
+	kq.X = q.X
+	kq.Y = q.Y
+	kq.Z = q.Z
+	return kq
 }

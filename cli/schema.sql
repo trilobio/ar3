@@ -14,3 +14,4 @@ CREATE TABLE IF NOT EXISTS pose (
         QY REAL NOT NULL,
         QZ REAL NOT NULL
 );
+
