@@ -67,7 +67,7 @@ func main() {
 					if err != nil {
 						return fmt.Errorf("error calibrating robot: %v", err)
 					}
-					err = recordPose(s.db, s.robot)
+					err = recordJoints(s.db, s.robot)
 					if err != nil {
 						return err
 					}
@@ -75,7 +75,7 @@ func main() {
 					if err != nil {
 						return fmt.Errorf("error moving to home %v", err)
 					}
-					err = recordPose(s.db, s.robot)
+					err = recordJoints(s.db, s.robot)
 					if err != nil {
 						return err
 					}
@@ -87,16 +87,29 @@ func main() {
 				Aliases: []string{"s"},
 				Usage:   "Get the current state of the robot arm.",
 				Action: func(c *cli.Context) error {
-					pose, err := getPose(s.db, s.robot)
-					if err != nil {
-						return err
-					}
+					pose := (*s.robot).CurrentPose()
 
 					poseJSON, err := json.MarshalIndent(pose, "", "  ")
 					if err != nil {
 						return err
 					}
 					fmt.Printf("%s\n", string(poseJSON))
+					return nil
+				},
+			},
+			{
+				Name:  "home",
+				Usage: "Move the robot arm to the home position.",
+				Action: func(c *cli.Context) error {
+					err := (*s.robot).MoveJointRadians(s.speed, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0)
+					if err != nil {
+						return fmt.Errorf("error moving to home %v", err)
+					}
+
+					err = recordJoints(s.db, s.robot)
+					if err != nil {
+						return err
+					}
 					return nil
 				},
 			},
@@ -167,10 +180,8 @@ func main() {
 
 					// Handle relative transformations
 					if !abs {
-						currPose, err := getPose(s.db, s.robot)
-						if err != nil {
-							return err
-						}
+						currPose := (*s.robot).CurrentPose()
+
 						var currRot = kinQuatToQuat(currPose.Rotation)
 						var targRot = kinQuatToQuat(targPose.Rotation)
 
@@ -180,13 +191,17 @@ func main() {
 						targPose.Rotation = quatToKinQuat(targRot.MulQuat(currRot))
 
 					}
+					targRot := kinQuatToQuat(targPose.Rotation)
+					targRot.Normalize()
+					targPose.Rotation = quatToKinQuat(targRot)
 
 					err := (*s.robot).Move(s.speed, 10, 10, 10, 10, targPose)
+
 					if err != nil {
 						return fmt.Errorf("error moving to position %v", err)
 					}
 
-					err = recordPose(s.db, s.robot)
+					err = recordJoints(s.db, s.robot)
 					if err != nil {
 						return err
 					}
@@ -231,7 +246,12 @@ func main() {
 				return fmt.Errorf("error executing schema: %v", err)
 			}
 
-			return err
+			jointsRestore, err := getJoints(s.db, s.robot)
+			if err == nil {
+				(*s.robot).SetJointRadians(jointsRestore)
+			}
+
+			return nil
 		},
 	}
 
@@ -246,17 +266,16 @@ func main() {
 
 }
 
-func recordPose(db *sqlx.DB, robot *ar3.Arm) error {
-	pose := (*robot).CurrentPose()
-
+func recordJoints(db *sqlx.DB, robot *ar3.Arm) error {
+	joints := (*robot).CurrentJointRadians()
+	// fmt.Println("Record Joints: ", joints)
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("error beginning transaction: %v", err)
 	}
-	_, err = tx.Exec("INSERT INTO pose (X, Y, Z, QW, QX, QY, QZ) VALUES"+
-		" (?, ?, ?, ?, ?, ?, ?);", pose.Position.X, pose.Position.Y,
-		pose.Position.Z, pose.Rotation.W, pose.Rotation.X, pose.Rotation.Y,
-		pose.Rotation.Z)
+	_, err = tx.Exec("INSERT INTO joints (J1, J2, J3, J4, J5, J6) VALUES"+
+		" (?, ?, ?, ?, ?, ?);", joints[0], joints[1], joints[2], joints[3],
+		joints[4], joints[5])
 
 	if err != nil {
 		errR := tx.Rollback()
@@ -273,35 +292,33 @@ func recordPose(db *sqlx.DB, robot *ar3.Arm) error {
 	return nil
 }
 
-func getPose(db *sqlx.DB, robot *ar3.Arm) (kinematics.Pose, error) {
-	var resPose kinematics.Pose
-	var pose struct {
+func getJoints(db *sqlx.DB, robot *ar3.Arm) ([7]float64, error) {
+	var resJoints [7]float64
+
+	var joints struct {
 		Insertedat time.Time `db:"insertedat"`
-		X          float64   `db:"X"`
-		Y          float64   `db:"Y"`
-		Z          float64   `db:"Z"`
-		QW         float64   `db:"QW"`
-		QX         float64   `db:"QX"`
-		QY         float64   `db:"QY"`
-		QZ         float64   `db:"QZ"`
+		J1         float64   `db:"J1"`
+		J2         float64   `db:"J2"`
+		J3         float64   `db:"J3"`
+		J4         float64   `db:"J4"`
+		J5         float64   `db:"J5"`
+		J6         float64   `db:"J6"`
 	}
 
-	err := db.Get(&pose, "SELECT * FROM pose ORDER BY insertedat")
+	err := db.Get(&joints, "SELECT * FROM joints ORDER BY insertedat DESC LIMIT 1")
 	if err != nil {
-		return resPose, fmt.Errorf("error getting most recent pose: %v", err)
+		return resJoints, fmt.Errorf("error getting most recent pose: %v", err)
 	}
 
 	// Unpack temporary struct
-	resPose.Position.X = pose.X
-	resPose.Position.Y = pose.Y
-	resPose.Position.Z = pose.Z
-
-	resPose.Rotation.W = pose.QW
-	resPose.Rotation.X = pose.QX
-	resPose.Rotation.Y = pose.QY
-	resPose.Rotation.Z = pose.QZ
-
-	return resPose, nil
+	resJoints[0] = joints.J1
+	resJoints[1] = joints.J2
+	resJoints[2] = joints.J3
+	resJoints[3] = joints.J4
+	resJoints[4] = joints.J5
+	resJoints[5] = joints.J6
+	// fmt.Println("Get Joints: ", resJoints)
+	return resJoints, nil
 }
 
 func kinQuatToQuat(kq kinematics.Quaternion) Quat {

@@ -63,6 +63,7 @@ type Arm interface {
 	Echo() error
 	GetDirections() [7]bool
 	SetDirections([7]bool)
+	SetJointRadians([7]float64)
 
 	CurrentJointRadians() [7]float64
 	CurrentPose() kinematics.Pose
@@ -440,6 +441,20 @@ func (ar3 *AR3exec) CurrentJointRadians() [7]float64 {
 	stepVals := [7]int{js[0] - sl[0], js[1] - sl[1], js[2] - sl[2], js[3] - sl[3], js[4] - sl[4], js[5] - sl[5], js[6] - sl[6]}
 	jointVals := stepsToAngles(stepVals, false)
 	return jointVals
+}
+
+// SetJointRadians sets the joint values of the robot given an array of joint
+// values in Radians.
+func (ar3 *AR3exec) SetJointRadians(joints [7]float64) {
+	jointSteps := anglesToSteps(joints, false)
+
+	sl := ar3.limitSwitchSteps
+	relSteps := [7]int{
+		jointSteps[0] + sl[0], jointSteps[1] + sl[1], jointSteps[2] + sl[2], jointSteps[3] + sl[3],
+		jointSteps[4] + sl[4], jointSteps[5] + sl[5], jointSteps[6] + sl[6]}
+
+	ar3.jointVals = relSteps
+
 }
 
 // CurrentPose returns the current Pose of the robot, using forward kinematics
