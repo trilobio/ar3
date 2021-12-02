@@ -365,7 +365,7 @@ func (ar3 *AR3exec) Move(speed, accdur, accspd, dccdur, dccspd int, pose kinemat
 	thetasInit := []float64{ja[0], ja[1], ja[2], ja[3], ja[4], ja[5]}
 	tj, err := kinematics.InverseKinematics(pose, AR3DhParameters, thetasInit)
 	if err != nil {
-		return fmt.Errorf("Inverse Kinematics failed with error: %s", err)
+		return fmt.Errorf("inverse kinematics failed with error: %s", err)
 	}
 	return ar3.MoveJointRadians(speed, accdur, accspd, dccdur,
 		dccspd, tj[0], tj[1], tj[2], tj[3], tj[4], tj[5], 0)
@@ -444,7 +444,8 @@ func (ar3 *AR3exec) CurrentJointRadians() [7]float64 {
 }
 
 // SetJointRadians sets the joint values of the robot given an array of joint
-// values in Radians.
+// values in Radians. WARNING: This rounds the radian values for joints to the
+// nearest step, and therefore may not be exactly translated.
 func (ar3 *AR3exec) SetJointRadians(joints [7]float64) {
 	jointSteps := anglesToSteps(joints, false)
 
