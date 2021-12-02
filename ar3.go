@@ -35,12 +35,13 @@ package ar3
 
 import (
 	"fmt"
-	"github.com/trilobio/kinematics"
-	"golang.org/x/sys/unix"
 	"math"
 	"os"
 	"time"
 	"unsafe"
+
+	"github.com/trilobio/kinematics"
+	"golang.org/x/sys/unix"
 )
 
 // Converts degrees to radians
@@ -62,6 +63,7 @@ type Arm interface {
 	Echo() error
 	GetDirections() [7]bool
 	SetDirections([7]bool)
+	SetJointRadians([7]float64)
 
 	CurrentJointRadians() [7]float64
 	CurrentPose() kinematics.Pose
@@ -77,16 +79,16 @@ type Arm interface {
 // The following StepLims are hard-coded in the ARbot.cal file for the stepper
 // motors. These should not change.
 const j1stepLim int = 15200
-const j2stepLim int = 7300
+const j2stepLim int = 14600
 const j3stepLim int = 7850
 const j4stepLim int = 15200
 const j5stepLim int = 4575
-const j6stepLim int = 6625
+const j6stepLim int = 14936
 
 // The following RadSteps (radians per step) are calculated from the AR3 stepper
 // motors and gearing to be exact values for converting steps to joint angles
 const j1RadStep float64 = 0.0225 * degreesToRadians
-const j2RadStep float64 = 0.018 * degreesToRadians
+const j2RadStep float64 = 0.009 * degreesToRadians
 const j3RadStep float64 = 0.018 * degreesToRadians
 const j4RadStep float64 = 0.01092214664 * degreesToRadians
 const j5RadStep float64 = 0.04723477289 * degreesToRadians
@@ -94,6 +96,7 @@ const j6RadStep float64 = 0.02343358396 * degreesToRadians
 const trMmStep float64 = 0.0 // This is for a linear rail (mm/step)
 
 var calibDirs = [7]bool{false, true, false, false, true, true, false}
+var limitSwitchSteps [7]int = anglesToSteps([7]float64{-170, 42.5, -60, -85, 90, 170, 0}, true)
 
 // AR3exec struct represents an AR3 robotic arm connected to a serial port.
 type AR3exec struct {
@@ -131,8 +134,6 @@ func (ar3 *AR3exec) clearBuffer() error {
 	}
 	return errno
 }
-
-var limitSwitchSteps [7]int = anglesToSteps([7]float64{-170, 85, -60, -85, 90, 80, 0}, true)
 
 // Connect connects to the AR3 over serial.
 //
@@ -364,7 +365,7 @@ func (ar3 *AR3exec) Move(speed, accdur, accspd, dccdur, dccspd int, pose kinemat
 	thetasInit := []float64{ja[0], ja[1], ja[2], ja[3], ja[4], ja[5]}
 	tj, err := kinematics.InverseKinematics(pose, AR3DhParameters, thetasInit)
 	if err != nil {
-		return fmt.Errorf("Inverse Kinematics failed with error: %s", err)
+		return fmt.Errorf("inverse kinematics failed with error: %s", err)
 	}
 	return ar3.MoveJointRadians(speed, accdur, accspd, dccdur,
 		dccspd, tj[0], tj[1], tj[2], tj[3], tj[4], tj[5], 0)
@@ -440,6 +441,21 @@ func (ar3 *AR3exec) CurrentJointRadians() [7]float64 {
 	stepVals := [7]int{js[0] - sl[0], js[1] - sl[1], js[2] - sl[2], js[3] - sl[3], js[4] - sl[4], js[5] - sl[5], js[6] - sl[6]}
 	jointVals := stepsToAngles(stepVals, false)
 	return jointVals
+}
+
+// SetJointRadians sets the joint values of the robot given an array of joint
+// values in Radians. WARNING: This rounds the radian values for joints to the
+// nearest step, and therefore may not be exactly translated.
+func (ar3 *AR3exec) SetJointRadians(joints [7]float64) {
+	jointSteps := anglesToSteps(joints, false)
+
+	sl := ar3.limitSwitchSteps
+	relSteps := [7]int{
+		jointSteps[0] + sl[0], jointSteps[1] + sl[1], jointSteps[2] + sl[2], jointSteps[3] + sl[3],
+		jointSteps[4] + sl[4], jointSteps[5] + sl[5], jointSteps[6] + sl[6]}
+
+	ar3.jointVals = relSteps
+
 }
 
 // CurrentPose returns the current Pose of the robot, using forward kinematics

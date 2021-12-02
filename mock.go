@@ -58,6 +58,18 @@ func (ar3 *AR3simulate) CurrentJointRadians() [7]float64 {
 	return jointVals
 }
 
+// SetJointRadians simulates AR3exec.SetJointRadians().
+func (ar3 *AR3simulate) SetJointRadians(joints [7]float64) {
+	jointSteps := anglesToSteps(joints, false)
+
+	sl := ar3.limitSwitchSteps
+	relSteps := [7]int{
+		jointSteps[0] + sl[0], jointSteps[1] + sl[1], jointSteps[2] + sl[2], jointSteps[3] + sl[3],
+		jointSteps[4] + sl[4], jointSteps[5] + sl[5], jointSteps[6] + sl[6]}
+
+	ar3.jointVals = relSteps
+}
+
 // CurrentPose simulates AR3exec.CurrentPose()
 func (ar3 *AR3simulate) CurrentPose() kinematics.Pose {
 	ja := ar3.CurrentJointRadians()
